@@ -3,20 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real DevSecOps Dashboard</title>
+    <title>Real DevSecOps Dashboard - Auto Pipeline</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <header class="topbar">
         <div class="brand">
-            <div class="logo">REAL</div>
+            <div class="logo">AUTO</div>
             <div>
                 <h1>DevSecOps Security Dashboard</h1>
-                <div class="subtitle">Real Security Scanning • VAN Monitoring • Auto-Fix</div>
+                <div class="subtitle">Auto Pipeline • Real Security Scanning • GitHub Actions</div>
             </div>
         </div>
         <nav class="nav">
             <button class="tab-btn active" data-tab="home">Dashboard</button>
+            <button class="tab-btn" data-tab="pipeline">Auto Pipeline</button>
             <button class="tab-btn" data-tab="van">VAN Monitor</button>
             <button class="tab-btn" data-tab="scan">Docker Scan</button>
             <button class="tab-btn" data-tab="autofix">Auto-Fix</button>
@@ -28,7 +29,7 @@
     <main class="container">
         <!-- Home Tab -->
         <section id="tab-home" class="tab">
-            <h2>🚀 Real DevSecOps Dashboard</h2>
+            <h2>🚀 Auto DevSecOps Dashboard</h2>
             <div class="dashboard-grid">
                 <div class="stat-card">
                     <h3>System Health</h3>
@@ -46,9 +47,42 @@
             <div class="card">
                 <h3>Quick Actions</h3>
                 <div class="action-buttons">
-                    <button class="btn primary" onclick="showTab('scan')">Scan Docker Image</button>
-                    <button class="btn secondary" onclick="showTab('van')">Check System Health</button>
-                    <button class="btn warning" onclick="loadAlerts()">View All Alerts</button>
+                    <button class="btn primary" onclick="showTab('pipeline')">🚀 Trigger Auto Pipeline</button>
+                    <button class="btn secondary" onclick="showTab('scan')">🔍 Quick Security Scan</button>
+                    <button class="btn warning" onclick="loadAlerts()">🚨 View All Alerts</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Auto Pipeline Tab -->
+        <section id="tab-pipeline" class="tab hidden">
+            <h2>🚀 Auto DevSecOps Pipeline</h2>
+            <div class="card">
+                <h3>Trigger Complete Security Pipeline</h3>
+                <p><strong>Automated Process:</strong> Scan → Rebuild → Rescan → Push → Dashboard</p>
+                <div class="pipeline-controls">
+                    <input type="text" id="pipeline-image-input" placeholder="e.g., nginx:latest, ubuntu:20.04" value="nginx:latest">
+                    <button class="btn primary" onclick="triggerAutoPipeline()">🚀 Trigger Auto Pipeline</button>
+                </div>
+                <div class="pipeline-stages">
+                    <h4>Pipeline Stages:</h4>
+                    <ol>
+                        <li>🔍 <strong>Initial Security Scan</strong> - Trivy + Grype vulnerability scanning</li>
+                        <li>🔧 <strong>Auto-Rebuild & Hardening</strong> - Package updates and security fixes</li>
+                        <li>🔍 <strong>Final Security Scan</strong> - Verify improvements on hardened image</li>
+                        <li>🚀 <strong>Push to Registry</strong> - Deploy secured image to GitHub Container Registry</li>
+                        <li>📊 <strong>Update Dashboard</strong> - Show results and security metrics</li>
+                    </ol>
+                </div>
+                <div id="pipeline-result" class="pipeline-result">
+                    <p>Ready to trigger pipeline. Enter an image name above.</p>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>Pipeline Status & History</h3>
+                <div id="pipeline-status">
+                    <p>Loading pipeline history...</p>
                 </div>
             </div>
         </section>
@@ -68,10 +102,10 @@
         <section id="tab-scan" class="tab hidden">
             <h2>🐳 Docker Security Scan</h2>
             <div class="card">
-                <h3>Scan Docker Image</h3>
+                <h3>Quick Security Scan</h3>
                 <div class="scan-controls">
                     <input type="text" id="scan-image-input" placeholder="e.g., nginx:latest, ubuntu:20.04" value="nginx:latest">
-                    <button class="btn primary" onclick="startScan()">Start Real Scan</button>
+                    <button class="btn primary" onclick="startScan()">Start Security Scan</button>
                 </div>
                 <div id="scan-progress"></div>
             </div>
@@ -95,13 +129,13 @@
         <section id="tab-autofix" class="tab hidden">
             <h2>🔧 Auto-Fix & Hardening</h2>
             <div class="card">
-                <h3>Auto-Fix Docker Image</h3>
+                <h3>Standalone Auto-Fix</h3>
                 <div class="fix-controls">
                     <input type="text" id="fix-image-input" placeholder="e.g., nginx:latest" value="nginx:latest">
-                    <button class="btn warning" onclick="startAutoFix()">Start Real Auto-Fix</button>
+                    <button class="btn warning" onclick="startAutoFix()">Start Auto-Fix</button>
                 </div>
                 <div class="warning-note">
-                    <strong>Note:</strong> This will create a new hardened image with updated packages.
+                    <strong>Note:</strong> This creates a hardened image locally. Use the Auto Pipeline for complete workflow.
                 </div>
                 <div id="fix-progress"></div>
             </div>
@@ -130,11 +164,11 @@
                 <div class="chat-container">
                     <div id="chat-messages" class="chat-messages">
                         <div class="message bot">
-                            <strong>Assistant:</strong> Hello! I'm your DevSecOps assistant. I can help you with security scanning, system monitoring, and auto-fixing vulnerabilities.
+                            <strong>Assistant:</strong> Hello! I'm your DevSecOps assistant. I can help you with security scanning, system monitoring, auto-fixing vulnerabilities, and triggering the complete Auto DevSecOps Pipeline!
                         </div>
                     </div>
                     <div class="chat-input">
-                        <input type="text" id="chat-input" placeholder="Ask about scanning, monitoring, or auto-fix...">
+                        <input type="text" id="chat-input" placeholder="Ask about Auto Pipeline, scanning, or security...">
                         <button class="btn" onclick="sendMessage()">Send</button>
                     </div>
                 </div>

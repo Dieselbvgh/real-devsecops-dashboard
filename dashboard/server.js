@@ -1,6 +1,5 @@
 /**
- * REAL DevSecOps Dashboard Server
- * Real Trivy + Grype scans + VAN monitoring + Auto-fix
+ * REAL DevSecOps Dashboard Server - COMPLETE AUTO PIPELINE
  */
 
 require('dotenv').config();
@@ -33,6 +32,10 @@ const VAN_CACHE_FILE = path.join(DATA_DIR, 'van_cache.json');
 
 // Initialize files
 if (!fs.existsSync(ALERTS_FILE)) fs.writeFileSync(ALERTS_FILE, '[]');
+
+// Pipeline integration
+const PIPELINE_DATA_DIR = path.join(DATA_DIR, 'pipeline');
+if (!fs.existsSync(PIPELINE_DATA_DIR)) fs.mkdirSync(PIPELINE_DATA_DIR, { recursive: true });
 
 // Logging function
 function log(message) {
@@ -82,6 +85,49 @@ function createAlert(alert) {
   writeAlerts(alerts);
   log(`ALERT: ${newAlert.severity} - ${newAlert.title}`);
   return newAlert;
+}
+
+// Function to trigger GitHub Actions from dashboard
+async function triggerGitHubPipeline(imageName) {
+  const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+  const REPO_OWNER = 'Dieselbvgh';
+  const REPO_NAME = 'real-devsecops-dashboard';
+  
+  if (!GITHUB_TOKEN) {
+    console.log('⚠️ GITHUB_TOKEN not set - cannot trigger pipeline');
+    return { success: false, error: 'GitHub token not configured' };
+  }
+
+  try {
+    const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/dispatches`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        event_type: 'docker-test-triggered',
+        client_payload: {
+          image: imageName,
+          timestamp: new Date().toISOString(),
+          trigger: 'dashboard'
+        }
+      })
+    });
+
+    if (response.ok) {
+      console.log(`✅ GitHub Actions triggered for image: ${imageName}`);
+      return { success: true, message: 'Pipeline triggered successfully' };
+    } else {
+      const error = await response.text();
+      console.log(`❌ Failed to trigger pipeline: ${error}`);
+      return { success: false, error: error };
+    }
+  } catch (error) {
+    console.log(`❌ Error triggering pipeline: ${error.message}`);
+    return { success: false, error: error.message };
+  }
 }
 
 // REAL VAN Monitoring
@@ -400,6 +446,46 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// API to trigger pipeline from dashboard
+app.post('/api/trigger-pipeline', async (req, res) => {
+  const { image } = req.body;
+  
+  if (!image) {
+    return res.status(400).json({ success: false, error: 'Image name required' });
+  }
+
+  log(`🚀 Triggering GitHub Actions pipeline for: ${image}`);
+  
+  try {
+    const result = await triggerGitHubPipeline(image);
+    
+    if (result.success) {
+      // Save pipeline trigger record
+      const triggerRecord = {
+        id: `trigger-${Date.now()}`,
+        image: image,
+        timestamp: new Date().toISOString(),
+        status: 'triggered',
+        workflow_url: `https://github.com/Dieselbvgh/real-devsecops-dashboard/actions`
+      };
+      
+      const triggersFile = path.join(PIPELINE_DATA_DIR, `${triggerRecord.id}.json`);
+      fs.writeFileSync(triggersFile, JSON.stringify(triggerRecord, null, 2));
+      
+      res.json({ 
+        success: true, 
+        message: 'DevSecOps pipeline triggered successfully!',
+        trigger_id: triggerRecord.id,
+        image: image
+      });
+    } else {
+      res.status(500).json({ success: false, error: result.error });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // System Health (VAN)
 app.get('/api/van', async (req, res) => {
   try {
@@ -461,6 +547,27 @@ app.post('/api/auto-fix', async (req, res) => {
   }
 });
 
+// Pipeline status
+app.get('/api/pipeline/status', (req, res) => {
+  try {
+    const pipelineFiles = fs.readdirSync(PIPELINE_DATA_DIR)
+      .filter(file => file.endsWith('.json'))
+      .map(file => {
+        try {
+          return JSON.parse(fs.readFileSync(path.join(PIPELINE_DATA_DIR, file), 'utf8'));
+        } catch (e) {
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    res.json({ success: true, data: pipelineFiles });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Alerts
 app.get('/api/alerts', (req, res) => {
   try {
@@ -507,7 +614,14 @@ app.post('/api/chat', async (req, res) => {
     if (lowerMessage.includes('scan') || lowerMessage.includes('security')) {
       return res.json({ 
         success: true, 
-        response: "I can help you scan Docker images for security vulnerabilities. Use the Docker Scan tab to scan an image with Trivy and Grype." 
+        response: "I can help you scan Docker images for security vulnerabilities. Use the Docker Scan tab to scan an image or trigger the full Auto DevSecOps Pipeline!" 
+      });
+    }
+    
+    if (lowerMessage.includes('pipeline') || lowerMessage.includes('auto')) {
+      return res.json({ 
+        success: true, 
+        response: "The Auto DevSecOps Pipeline automatically: 1) Scans your image, 2) Rebuilds and hardens it, 3) Rescans the hardened image, 4) Pushes to registry, 5) Updates the dashboard with results!" 
       });
     }
     
@@ -528,20 +642,20 @@ app.post('/api/chat', async (req, res) => {
     if (lowerMessage.includes('fix') || lowerMessage.includes('auto-fix')) {
       return res.json({ 
         success: true, 
-        response: "Auto-fix can harden Docker images by updating packages and creating secured versions. Use the Auto-Fix tab to secure your images." 
+        response: "Auto-fix can harden Docker images by updating packages and creating secured versions. Use the Auto-Fix tab to secure your images, or trigger the full pipeline for automatic fixing!" 
       });
     }
     
     if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
       return res.json({ 
         success: true, 
-        response: "Hello! I'm your DevSecOps assistant. I can help you with security scanning, system monitoring, and auto-fixing vulnerabilities." 
+        response: "Hello! I'm your DevSecOps assistant. I can help you with security scanning, system monitoring, auto-fixing vulnerabilities, and triggering the complete Auto DevSecOps Pipeline!" 
       });
     }
     
     return res.json({ 
       success: true, 
-      response: "I understand you're asking about: '" + message + "'. I can help with Docker security scanning, system monitoring (VAN), alerts management, and auto-fixing images. Which would you like to know more about?" 
+      response: "I understand you're asking about: '" + message + "'. I can help with Docker security scanning, system monitoring (VAN), alerts management, auto-fixing images, and triggering the complete Auto DevSecOps Pipeline. Which would you like to know more about?" 
     });
     
   } catch (error) {
@@ -555,14 +669,16 @@ app.get('/api/health', (req, res) => {
     success: true, 
     message: 'DevSecOps Dashboard is running',
     timestamp: new Date().toISOString(),
-    version: '1.0.0'
+    version: '2.0.0',
+    features: ['Auto Pipeline', 'VAN Monitoring', 'Security Scanning', 'Auto-Fix', 'GitHub Actions Integration']
   });
 });
 
 // Start server
 app.listen(PORT, () => {
-  log(`🚀 REAL DevSecOps Dashboard started on port ${PORT}`);
+  log(`🚀 REAL DevSecOps Dashboard with Auto Pipeline started on port ${PORT}`);
   log(`📊 Dashboard: http://localhost:${PORT}`);
   log(`🔧 API Health: http://localhost:${PORT}/api/health`);
-  log(`🐳 Make sure Docker, Trivy, and Grype are installed for full functionality`);
+  log(`🚀 Auto Pipeline: Ready to trigger from dashboard!`);
+  log(`💡 Set GITHUB_TOKEN environment variable to enable pipeline triggering`);
 });

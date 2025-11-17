@@ -1,12 +1,23 @@
 [
   {
+    "id": "1763383471764-gt98c1qwk",
+    "timestamp": "2025-11-17T12:44:31.764Z",
+    "status": "open",
+    "severity": "low",
+    "title": "Image Auto-Fix Completed",
+    "description": "Hardened image created: nginx-hardened-1763383439928:latest",
+    "type": "auto-fix",
+    "image": "nginx-hardened-1763383439928:latest"
+  },
+  {
     "id": "1763382749297-royckt9v7",
     "timestamp": "2025-11-17T12:32:29.297Z",
-    "status": "open",
+    "status": "mitigated",
     "severity": "low",
     "title": "Image Auto-Fix Completed",
     "description": "Hardened image created: nginx-hardened-1763382693724:latest",
     "type": "auto-fix",
-    "image": "nginx-hardened-1763382693724:latest"
+    "image": "nginx-hardened-1763382693724:latest",
+    "mitigatedAt": "2025-11-17T12:43:54.084Z"
   }
 ]

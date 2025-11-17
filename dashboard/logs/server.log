@@ -24,3 +24,12 @@
 [2025-11-17T12:31:33.724Z] Starting REAL auto-fix for: nginx:latest
 [2025-11-17T12:32:29.297Z] ALERT: low - Image Auto-Fix Completed
 [2025-11-17T12:38:26.821Z] Running REAL VAN system checks...
+[2025-11-17T12:43:21.518Z] 🚀 REAL DevSecOps Dashboard with Auto Pipeline started on port 5001
+[2025-11-17T12:43:21.519Z] 📊 Dashboard: http://localhost:5001
+[2025-11-17T12:43:21.520Z] 🔧 API Health: http://localhost:5001/api/health
+[2025-11-17T12:43:21.520Z] 🚀 Auto Pipeline: Ready to trigger from dashboard!
+[2025-11-17T12:43:21.520Z] 💡 Set GITHUB_TOKEN environment variable to enable pipeline triggering
+[2025-11-17T12:43:59.927Z] Starting REAL auto-fix for: nginx:latest
+[2025-11-17T12:44:05.963Z] Running REAL VAN system checks...
+[2025-11-17T12:44:31.764Z] ALERT: low - Image Auto-Fix Completed
+[2025-11-17T12:47:39.400Z] Running REAL VAN system checks...

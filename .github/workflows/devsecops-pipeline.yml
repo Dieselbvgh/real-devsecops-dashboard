@@ -7,12 +7,9 @@ on:
         description: 'Docker image to test and auto-fix'
         required: true
         default: 'nginx:latest'
-  repository_dispatch:
-    types: [docker-test-triggered]
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   full-security-pipeline:
@@ -29,29 +26,15 @@ jobs:
     - name: Setup environment
       id: setup
       run: |
-        # Determine image to process
-        if [[ '${{ github.event_name }}' == 'repository_dispatch' ]]; then
-          echo "IMAGE=${{ github.event.client_payload.image }}" >> $GITHUB_OUTPUT
-          echo "TRIGGER=dashboard" >> $GITHUB_OUTPUT
-        else
-          echo "IMAGE=${{ github.event.inputs.image_name }}" >> $GITHUB_OUTPUT
-          echo "TRIGGER=manual" >> $GITHUB_OUTPUT
-        fi
-        
-        echo "🎯 Processing image: $IMAGE"
-        echo "🔧 Trigger: $TRIGGER"
-        
-        # Create directories
+        echo "IMAGE=${{ github.event.inputs.image_name }}" >> $GITHUB_OUTPUT
+        echo "🎯 Processing image: ${{ github.event.inputs.image_name }}"
         mkdir -p security-reports pipeline-results
 
     - name: Install security tools
       run: |
         echo "🔧 Installing security tools..."
-        # Install Trivy
         curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
         echo "Trivy version:" && trivy --version
-        
-        # Install Grype
         curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
         echo "Grype version:" && grype version
 
@@ -60,69 +43,41 @@ jobs:
       run: |
         echo "🔍 STARTING INITIAL SECURITY SCAN"
         echo "📦 Image: ${{ steps.setup.outputs.IMAGE }}"
-        
-        # Pull image
         docker pull ${{ steps.setup.outputs.IMAGE }}
-        
-        # Trivy scan - initial
         echo "🛡️ Running Trivy initial scan..."
         trivy image --format json --output security-reports/initial-trivy.json ${{ steps.setup.outputs.IMAGE }}
-        
-        # Grype scan - initial
         echo "🛡️ Running Grype initial scan..."
         grype ${{ steps.setup.outputs.IMAGE }} -o json > security-reports/initial-grype.json
-        
-        # Count vulnerabilities
-        echo "📊 Analyzing initial results..."
         sudo apt-get install -y jq
         INITIAL_CRITICAL=$(trivy image --severity CRITICAL --format json ${{ steps.setup.outputs.IMAGE }} | jq '.Results[].Vulnerabilities[]? | select(.Severity=="CRITICAL")' | jq -s length)
         INITIAL_HIGH=$(trivy image --severity HIGH --format json ${{ steps.setup.outputs.IMAGE }} | jq '.Results[].Vulnerabilities[]? | select(.Severity=="HIGH")' | jq -s length)
-        
         echo "INITIAL_CRITICAL=${INITIAL_CRITICAL:-0}" >> $GITHUB_ENV
         echo "INITIAL_HIGH=${INITIAL_HIGH:-0}" >> $GITHUB_ENV
-        
         echo "✅ Initial scan completed: $INITIAL_CRITICAL CRITICAL, $INITIAL_HIGH HIGH vulnerabilities"
 
     - name: 🔧 AUTO-REBUILD & HARDEN
       id: auto_rebuild
       run: |
         echo "🔧 STARTING AUTO-REBUILD PROCESS"
-        
         IMAGE="${{ steps.setup.outputs.IMAGE }}"
-        BASE_NAME=$(echo $IMAGE | cut -d':' -f1)
+        BASE_NAME=$(echo $IMAGE | cut -d':' -f1 | tr '/' '-' | tr ':' '-' | tr '.' '-')
         TIMESTAMP=$(date +%s)
         HARDENED_IMAGE="${BASE_NAME}-hardened-${TIMESTAMP}:latest"
-        
         echo "🎯 Original: $IMAGE"
         echo "🛡️ Hardened: $HARDENED_IMAGE"
-        
-        # Create container for hardening
-        echo "📦 Creating container..."
         CONTAINER_ID=$(docker create $IMAGE bash -c "tail -f /dev/null")
-        
         if [ -n "$CONTAINER_ID" ]; then
           echo "✅ Container created: $CONTAINER_ID"
-          
-          # Start container
           docker start $CONTAINER_ID
           sleep 3
-          
-          # Update packages (auto-fix)
           echo "🔄 Updating system packages..."
           docker exec $CONTAINER_ID bash -c "apt-get update && apt-get upgrade -y" || echo "Package update completed"
-          
-          # Clean up
           echo "🧹 Cleaning up..."
           docker exec $CONTAINER_ID bash -c "apt-get autoremove -y && apt-get clean"
-          
-          # Commit hardened image
           echo "📸 Committing hardened image..."
           docker commit $CONTAINER_ID $HARDENED_IMAGE
-          
-          # Cleanup container
           docker stop $CONTAINER_ID
           docker rm $CONTAINER_ID
-          
           echo "HARDENED_IMAGE=$HARDENED_IMAGE" >> $GITHUB_ENV
           echo "✅ Auto-rebuild completed: $HARDENED_IMAGE"
         else
@@ -135,29 +90,18 @@ jobs:
       run: |
         echo "🔍 STARTING FINAL SECURITY SCAN"
         echo "📦 Hardened image: $HARDENED_IMAGE"
-        
-        # Trivy scan - final
         echo "🛡️ Running Trivy final scan..."
         trivy image --format json --output security-reports/final-trivy.json $HARDENED_IMAGE
-        
-        # Grype scan - final
         echo "🛡️ Running Grype final scan..."
         grype $HARDENED_IMAGE -o json > security-reports/final-grype.json
-        
-        # Count vulnerabilities after fix
         FINAL_CRITICAL=$(trivy image --severity CRITICAL --format json $HARDENED_IMAGE | jq '.Results[].Vulnerabilities[]? | select(.Severity=="CRITICAL")' | jq -s length)
         FINAL_HIGH=$(trivy image --severity HIGH --format json $HARDENED_IMAGE | jq '.Results[].Vulnerabilities[]? | select(.Severity=="HIGH")' | jq -s length)
-        
         echo "FINAL_CRITICAL=${FINAL_CRITICAL:-0}" >> $GITHUB_ENV
         echo "FINAL_HIGH=${FINAL_HIGH:-0}" >> $GITHUB_ENV
-        
-        # Calculate improvements
         CRITICAL_IMPROVEMENT=$(($INITIAL_CRITICAL - $FINAL_CRITICAL))
         HIGH_IMPROVEMENT=$(($INITIAL_HIGH - $FINAL_HIGH))
-        
         echo "CRITICAL_IMPROVEMENT=$CRITICAL_IMPROVEMENT" >> $GITHUB_ENV
         echo "HIGH_IMPROVEMENT=$HIGH_IMPROVEMENT" >> $GITHUB_ENV
-        
         echo "✅ Final scan completed: $FINAL_CRITICAL CRITICAL, $FINAL_HIGH HIGH vulnerabilities"
         echo "📈 Security improved: $CRITICAL_IMPROVEMENT CRITICAL, $HIGH_IMPROVEMENT HIGH vulnerabilities fixed"
 
@@ -165,23 +109,17 @@ jobs:
       if: success()
       run: |
         echo "🚀 PUSHING HARDENED IMAGE TO REGISTRY"
-        
-        # Login to GitHub Container Registry
         echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-        
-        # Tag and push
-        REGISTRY_TAG="ghcr.io/${{ github.repository }}/hardened:latest"
+        # Use simple tag without repository name to avoid format issues
+        REGISTRY_TAG="ghcr.io/${{ github.actor }}/hardened-image:latest"
         docker tag $HARDENED_IMAGE $REGISTRY_TAG
         docker push $REGISTRY_TAG
-        
         echo "REGISTRY_TAG=$REGISTRY_TAG" >> $GITHUB_ENV
         echo "✅ Hardened image pushed: $REGISTRY_TAG"
 
     - name: 📈 GENERATE RESULTS
       run: |
         echo "📈 GENERATING PIPELINE RESULTS"
-        
-        # Create pipeline summary
         cat > pipeline-results/summary.json << EOF
         {
           "pipeline_id": "${{ github.run_id }}",
@@ -189,7 +127,6 @@ jobs:
           "original_image": "${{ steps.setup.outputs.IMAGE }}",
           "hardened_image": "$HARDENED_IMAGE",
           "registry_image": "$REGISTRY_TAG",
-          "trigger": "${{ steps.setup.outputs.TRIGGER }}",
           "security_metrics": {
             "initial_scan": {
               "critical_vulnerabilities": $INITIAL_CRITICAL,
@@ -201,15 +138,13 @@ jobs:
             },
             "improvements": {
               "critical_fixed": $CRITICAL_IMPROVEMENT,
-              "high_fixed": $HIGH_IMPROVEMENT,
-              "total_improvement": $(($CRITICAL_IMPROVEMENT + $HIGH_IMPROVEMENT))
+              "high_fixed": $HIGH_IMPROVEMENT
             }
           },
           "workflow_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}",
           "status": "completed"
         }
         EOF
-        
         echo "✅ Results generated"
 
     - name: 📤 UPLOAD ARTIFACTS
@@ -224,8 +159,8 @@ jobs:
     - name: 🎯 PIPELINE SUMMARY
       run: |
         echo ""
-        echo "🎉 AUTO DEVSECOPS PIPELINE COMPLETED"
-        echo "====================================="
+        echo "🎉 AUTO DEVSECOPS PIPELINE COMPLETED SUCCESSFULLY!"
+        echo "=================================================="
         echo "📊 SECURITY METRICS:"
         echo "   Initial: $INITIAL_CRITICAL CRITICAL, $INITIAL_HIGH HIGH vulnerabilities"
         echo "   Final:   $FINAL_CRITICAL CRITICAL, $FINAL_HIGH HIGH vulnerabilities"
@@ -236,40 +171,6 @@ jobs:
         echo "   Hardened: $HARDENED_IMAGE"
         echo "   Registry: $REGISTRY_TAG"
         echo ""
-        echo "📁 ARTIFACTS:"
-        echo "   Security reports available for download"
-        echo "   Pipeline summary generated"
-        echo ""
+        echo "📁 ARTIFACTS: Security reports available for download"
         echo "🔗 WORKFLOW: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         echo ""
-
-  update-dashboard:
-    runs-on: ubuntu-latest
-    needs: full-security-pipeline
-    if: always()
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Download artifacts
-      uses: actions/download-artifact@v4
-      with:
-        pattern: pipeline-results-*
-        path: ./downloaded-results
-
-    - name: Update dashboard data
-      run: |
-        echo "📊 Updating dashboard with pipeline results..."
-        mkdir -p dashboard/data/pipeline
-        
-        # Find latest results
-        LATEST_RESULT=$(find ./downloaded-results -name "summary.json" | head -1)
-        
-        if [ -n "$LATEST_RESULT" ]; then
-          cp $LATEST_RESULT dashboard/data/pipeline/latest-pipeline-result.json
-          echo "✅ Dashboard data updated"
-          cat dashboard/data/pipeline/latest-pipeline-result.json
-        else
-          echo "⚠️ No pipeline results found"
-        fi

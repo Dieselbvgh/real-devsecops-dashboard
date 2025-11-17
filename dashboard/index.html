@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real DevSecOps Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <div class="logo">REAL</div>
+            <div>
+                <h1>DevSecOps Security Dashboard</h1>
+                <div class="subtitle">Real Security Scanning • VAN Monitoring • Auto-Fix</div>
+            </div>
+        </div>
+        <nav class="nav">
+            <button class="tab-btn active" data-tab="home">Dashboard</button>
+            <button class="tab-btn" data-tab="van">VAN Monitor</button>
+            <button class="tab-btn" data-tab="scan">Docker Scan</button>
+            <button class="tab-btn" data-tab="autofix">Auto-Fix</button>
+            <button class="tab-btn" data-tab="alerts">Alerts</button>
+            <button class="tab-btn" data-tab="chat">Chat Assistant</button>
+        </nav>
+    </header>
+
+    <main class="container">
+        <!-- Home Tab -->
+        <section id="tab-home" class="tab">
+            <h2>🚀 Real DevSecOps Dashboard</h2>
+            <div class="dashboard-grid">
+                <div class="stat-card">
+                    <h3>System Health</h3>
+                    <div id="health-status">Checking...</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Recent Scans</h3>
+                    <div id="recent-scans">Loading...</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Active Alerts</h3>
+                    <div id="active-alerts">Loading...</div>
+                </div>
+            </div>
+            <div class="card">
+                <h3>Quick Actions</h3>
+                <div class="action-buttons">
+                    <button class="btn primary" onclick="showTab('scan')">Scan Docker Image</button>
+                    <button class="btn secondary" onclick="showTab('van')">Check System Health</button>
+                    <button class="btn warning" onclick="loadAlerts()">View All Alerts</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- VAN Monitoring Tab -->
+        <section id="tab-van" class="tab hidden">
+            <h2>🔍 VAN System Monitoring</h2>
+            <div class="card">
+                <button class="btn" onclick="loadVANStatus()">Refresh VAN Status</button>
+                <div id="van-status" class="van-grid">
+                    <div class="loading">Loading real system metrics...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Docker Scan Tab -->
+        <section id="tab-scan" class="tab hidden">
+            <h2>🐳 Docker Security Scan</h2>
+            <div class="card">
+                <h3>Scan Docker Image</h3>
+                <div class="scan-controls">
+                    <input type="text" id="scan-image-input" placeholder="e.g., nginx:latest, ubuntu:20.04" value="nginx:latest">
+                    <button class="btn primary" onclick="startScan()">Start Real Scan</button>
+                </div>
+                <div id="scan-progress"></div>
+            </div>
+            
+            <div class="card">
+                <h3>Scan Results</h3>
+                <div class="scan-results">
+                    <div id="scan-results-content">
+                        <p>No scans yet. Start a scan to see results.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>Scan History</h3>
+                <div id="scan-history"></div>
+            </div>
+        </section>
+
+        <!-- Auto-Fix Tab -->
+        <section id="tab-autofix" class="tab hidden">
+            <h2>🔧 Auto-Fix & Hardening</h2>
+            <div class="card">
+                <h3>Auto-Fix Docker Image</h3>
+                <div class="fix-controls">
+                    <input type="text" id="fix-image-input" placeholder="e.g., nginx:latest" value="nginx:latest">
+                    <button class="btn warning" onclick="startAutoFix()">Start Real Auto-Fix</button>
+                </div>
+                <div class="warning-note">
+                    <strong>Note:</strong> This will create a new hardened image with updated packages.
+                </div>
+                <div id="fix-progress"></div>
+            </div>
+            
+            <div class="card">
+                <h3>Auto-Fix Results</h3>
+                <div id="fix-results"></div>
+            </div>
+        </section>
+
+        <!-- Alerts Tab -->
+        <section id="tab-alerts" class="tab hidden">
+            <h2>🚨 Security Alerts</h2>
+            <div class="card">
+                <button class="btn" onclick="loadAlerts()">Refresh Alerts</button>
+                <div id="alerts-list">
+                    <div class="loading">Loading alerts...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Chat Assistant Tab -->
+        <section id="tab-chat" class="tab hidden">
+            <h2>💬 DevSecOps Assistant</h2>
+            <div class="card">
+                <div class="chat-container">
+                    <div id="chat-messages" class="chat-messages">
+                        <div class="message bot">
+                            <strong>Assistant:</strong> Hello! I'm your DevSecOps assistant. I can help you with security scanning, system monitoring, and auto-fixing vulnerabilities.
+                        </div>
+                    </div>
+                    <div class="chat-input">
+                        <input type="text" id="chat-input" placeholder="Ask about scanning, monitoring, or auto-fix...">
+                        <button class="btn" onclick="sendMessage()">Send</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

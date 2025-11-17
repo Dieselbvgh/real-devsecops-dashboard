@@ -1,0 +1,23 @@
+{
+  "name": "real-devsecops-dashboard",
+  "version": "1.0.0",
+  "description": "Real DevSecOps Dashboard with Trivy, Grype, VAN monitoring",
+  "main": "dashboard/server.js",
+  "scripts": {
+    "start": "node dashboard/server.js",
+    "dev": "nodemon dashboard/server.js",
+    "setup-tools": "chmod +x scripts/install-tools.sh && ./scripts/install-tools.sh"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "body-parser": "^1.20.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": ["devsecops", "security", "docker", "trivy", "grype"],
+  "author": "DevSecOps Engineer",
+  "license": "MIT"
+}

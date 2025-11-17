@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  devsecops-dashboard:
+    build: .
+    ports:
+      - "5001:5001"
+    environment:
+      - NODE_ENV=production
+      - PORT=5001
+    volumes:
+      - ./dashboard/data:/app/dashboard/data
+      - ./dashboard/logs:/app/dashboard/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    privileged: true
+
+  # Security scanning tools
+  trivy:
+    image: aquasec/trivy:latest
+    command: --help
+    profiles: ["tools"]
+
+  grype:
+    image: anchore/grype:latest
+    command: --help
+    profiles: ["tools"]

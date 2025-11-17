@@ -8,9 +8,6 @@ on:
         required: true
         default: 'nginx:latest'
 
-env:
-  REGISTRY: ghcr.io
-
 jobs:
   full-security-pipeline:
     runs-on: ubuntu-latest
@@ -60,7 +57,7 @@ jobs:
       run: |
         echo "🔧 STARTING AUTO-REBUILD PROCESS"
         IMAGE="${{ steps.setup.outputs.IMAGE }}"
-        BASE_NAME=$(echo $IMAGE | cut -d':' -f1 | tr '/' '-' | tr ':' '-' | tr '.' '-')
+        BASE_NAME=$(echo $IMAGE | cut -d':' -f1 | tr '[:upper:]' '[:lower:]' | tr '/' '-' | tr ':' '-' | tr '.' '-')
         TIMESTAMP=$(date +%s)
         HARDENED_IMAGE="${BASE_NAME}-hardened-${TIMESTAMP}:latest"
         echo "🎯 Original: $IMAGE"
@@ -110,8 +107,8 @@ jobs:
       run: |
         echo "🚀 PUSHING HARDENED IMAGE TO REGISTRY"
         echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-        # Use simple tag without repository name to avoid format issues
-        REGISTRY_TAG="ghcr.io/${{ github.actor }}/hardened-image:latest"
+        # Use lowercase username and simple tag
+        REGISTRY_TAG="ghcr.io/dieselbvgh/hardened-image:latest"
         docker tag $HARDENED_IMAGE $REGISTRY_TAG
         docker push $REGISTRY_TAG
         echo "REGISTRY_TAG=$REGISTRY_TAG" >> $GITHUB_ENV
@@ -174,3 +171,30 @@ jobs:
         echo "📁 ARTIFACTS: Security reports available for download"
         echo "🔗 WORKFLOW: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         echo ""
+
+  update-dashboard:
+    runs-on: ubuntu-latest
+    needs: full-security-pipeline
+    if: always()
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: pipeline-results-*
+        path: ./downloaded-results
+
+    - name: Update dashboard data
+      run: |
+        echo "📊 Updating dashboard with pipeline results..."
+        mkdir -p dashboard/data/pipeline
+        LATEST_RESULT=$(find ./downloaded-results -name "summary.json" | head -1)
+        if [ -n "$LATEST_RESULT" ]; then
+          cp $LATEST_RESULT dashboard/data/pipeline/latest-pipeline-result.json
+          echo "✅ Dashboard data updated"
+        else
+          echo "⚠️ No pipeline results found"
+        fi

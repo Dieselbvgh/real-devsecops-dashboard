@@ -74,11 +74,12 @@ jobs:
         
         # Count vulnerabilities
         echo "📊 Analyzing initial results..."
-        INITIAL_CRITICAL=$(trivy image --severity CRITICAL --format json ${{ steps.setup.outputs.IMAGE }} | jq '.Results[].Vulnerabilities[] | select(.Severity=="CRITICAL")' | jq -s length)
-        INITIAL_HIGH=$(trivy image --severity HIGH --format json ${{ steps.setup.outputs.IMAGE }} | jq '.Results[].Vulnerabilities[] | select(.Severity=="HIGH")' | jq -s length)
+        sudo apt-get install -y jq
+        INITIAL_CRITICAL=$(trivy image --severity CRITICAL --format json ${{ steps.setup.outputs.IMAGE }} | jq '.Results[].Vulnerabilities[]? | select(.Severity=="CRITICAL")' | jq -s length)
+        INITIAL_HIGH=$(trivy image --severity HIGH --format json ${{ steps.setup.outputs.IMAGE }} | jq '.Results[].Vulnerabilities[]? | select(.Severity=="HIGH")' | jq -s length)
         
-        echo "INITIAL_CRITICAL=$INITIAL_CRITICAL" >> $GITHUB_ENV
-        echo "INITIAL_HIGH=$INITIAL_HIGH" >> $GITHUB_ENV
+        echo "INITIAL_CRITICAL=${INITIAL_CRITICAL:-0}" >> $GITHUB_ENV
+        echo "INITIAL_HIGH=${INITIAL_HIGH:-0}" >> $GITHUB_ENV
         
         echo "✅ Initial scan completed: $INITIAL_CRITICAL CRITICAL, $INITIAL_HIGH HIGH vulnerabilities"
 
@@ -144,11 +145,11 @@ jobs:
         grype $HARDENED_IMAGE -o json > security-reports/final-grype.json
         
         # Count vulnerabilities after fix
-        FINAL_CRITICAL=$(trivy image --severity CRITICAL --format json $HARDENED_IMAGE | jq '.Results[].Vulnerabilities[] | select(.Severity=="CRITICAL")' | jq -s length)
-        FINAL_HIGH=$(trivy image --severity HIGH --format json $HARDENED_IMAGE | jq '.Results[].Vulnerabilities[] | select(.Severity=="HIGH")' | jq -s length)
+        FINAL_CRITICAL=$(trivy image --severity CRITICAL --format json $HARDENED_IMAGE | jq '.Results[].Vulnerabilities[]? | select(.Severity=="CRITICAL")' | jq -s length)
+        FINAL_HIGH=$(trivy image --severity HIGH --format json $HARDENED_IMAGE | jq '.Results[].Vulnerabilities[]? | select(.Severity=="HIGH")' | jq -s length)
         
-        echo "FINAL_CRITICAL=$FINAL_CRITICAL" >> $GITHUB_ENV
-        FINAL_HIGH=$FINAL_HIGH" >> $GITHUB_ENV
+        echo "FINAL_CRITICAL=${FINAL_CRITICAL:-0}" >> $GITHUB_ENV
+        echo "FINAL_HIGH=${FINAL_HIGH:-0}" >> $GITHUB_ENV
         
         # Calculate improvements
         CRITICAL_IMPROVEMENT=$(($INITIAL_CRITICAL - $FINAL_CRITICAL))
